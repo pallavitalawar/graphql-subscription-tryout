@@ -3,41 +3,46 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
-import { ApolloProvider } from 'react-apollo'
-import { ApolloClient } from 'apollo-client'
-import { createHttpLink } from 'apollo-link-http'
-import { InMemoryCache } from 'apollo-cache-inmemory'
-import ActionCable from 'actioncable'
-import ActionCableLink from 'graphql-ruby-client/dist/subscriptions/ActionCableLink'
-import { ApolloLink } from 'apollo-link'
+import { ApolloProvider } from 'react-apollo';
+import { ApolloClient } from 'apollo-client';
+import { createHttpLink } from 'apollo-link-http';
+import { InMemoryCache } from 'apollo-cache-inmemory';
+// import ActionCable from 'actioncable';
+// import ActionCableLink from 'graphql-ruby-client/dist/subscriptions/ActionCableLink';
+import { WebSocketLink } from '@apollo/client/link/ws';
+import { ApolloLink } from 'apollo-link';
 
 const httpLink = createHttpLink({
-  uri: 'http://localhost:3000/graphql'
-})
+	uri: 'http://localhost:3000/graphql',
+});
 
-const cable = ActionCable.createConsumer('ws://localhost:3000/cable')
+// const cable = ActionCable.createConsumer('ws://localhost:3000/cable');
+
+const wsLink = new WebSocketLink({
+	uri: `ws://localhost:3000/cable`,
+	options: {
+		reconnect: true,
+	},
+});
 
 const hasSubscriptionOperation = ({ query: { definitions } }) => {
-  return definitions.some(
-    ({ kind, operation }) => kind === 'OperationDefinition' && operation === 'subscription',
-  )
-}
+	return definitions.some(
+		({ kind, operation }) =>
+			kind === 'OperationDefinition' && operation === 'subscription',
+	);
+};
 
-const link = ApolloLink.split(
-  hasSubscriptionOperation,
-  new ActionCableLink({cable}),
-  httpLink
-)
+const link = ApolloLink.split(hasSubscriptionOperation, wsLink, httpLink);
 const client = new ApolloClient({
-  link: link,
-  cache: new InMemoryCache()
-})
+	link: link,
+	cache: new InMemoryCache(),
+});
 
 ReactDOM.render(
-  <ApolloProvider client={client}>
-    <App />
-  </ApolloProvider>,
-  document.getElementById('root')
+	<ApolloProvider client={client}>
+		<App />
+	</ApolloProvider>,
+	document.getElementById('root'),
 );
 
 // If you want your app to work offline and load faster, you can change
